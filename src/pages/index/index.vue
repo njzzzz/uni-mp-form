@@ -1,16 +1,13 @@
+<script setup lang="ts">
+
+</script>
+
 <template>
   <view class="content">
     xxxx
-    <uni-forms ref="baseForm">
-		</uni-forms>
-    
+    <uni-forms ref="baseForm" />
   </view>
 </template>
-
-<script setup lang="ts">
-import  { useForm } from '@/common';
-
-</script>
 
 <style>
 .content {
