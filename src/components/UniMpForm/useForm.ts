@@ -1,120 +1,182 @@
+import { type MaybeRef, type Ref, readonly, unref, watch } from 'vue'
+
 import {
-  type DeepReadonly,
-  type MaybeRef,
-  type Ref,
-  type UnwrapRef,
-  h,
-  reactive,
-  readonly,
-  ref,
-  watch,
-} from 'vue'
+  type ChangeFn,
+  type FormItem,
+  type FormKeys,
+  type FormSchema,
+  NUP,
+} from './type'
+/**
+ * @description 处理dependOn的行为，dependOn修改时需要触发 changeConfig 和 changeValue
+ */
+export function useDependOn<T extends Record<string, any>>(
+  model: Ref<T>,
+  list: (FormItem<FormKeys<T>> & { name: FormKeys<T> })[],
+  runtimeConfig: FormSchema<T>['config'],
+  onConfigUpdated: (config: FormSchema<T>['config']) => void,
+  onValueUpdated: (modelValue: Ref<T>) => void,
+) {
+  for (let index = 0; index < list.length; index++) {
+    const item = list[index]
+    const {
+      changeConfig,
+      changeValue,
+      dependOn = [],
+      mapKeys = [],
+      name,
+    } = item
+    const deps = Array.isArray(dependOn) ? dependOn : [dependOn]
+    if (!deps.length)
+      return
+    const { strDeps, objDeps } = deps.reduce(
+      (
+        acc: { strDeps: FormKeys<T>[], objDeps: ChangeFn<FormKeys<T>>[] },
+        dep,
+      ) => {
+        // 影响当前项配置的changeConfig 和 changeValue
+        if (typeof dep === 'string')
+          acc.strDeps.push(dep)
+        // 对象配置，影响单个key的配置
+        else acc.objDeps.push(dep as ChangeFn<FormKeys<T>>)
 
-export type Widget =
-  | 'input'
-  | 'textarea'
-  | 'select'
-  | 'radio'
-  | 'checkbox'
-  | 'switch'
-  | 'slider'
-  | 'rate'
-  | 'date'
-  | 'time'
-  | 'datetime'
-  | 'upload'
-  | 'cascader'
-  | 'custom'
-type CanModifyFormItemConfigKeys =
-  | 'disabled'
-  | 'readonly'
-  | 'visible'
-  | 'hidden'
-  | 'required'
-  | 'label'
-  | 'labelWidth'
-  | 'errorMessage'
-type Value = any
-type AttachValue = any
-type CanModifyFormItemConfig = Pick<FormItem, CanModifyFormItemConfigKeys>
-
-type DependOnObj<T extends string> = Partial<
-  Record<
-    T,
-    {
-      changeConfig?:
-        | FormItem<T>['changeConfig'][]
-        | FormItem<T>['changeConfig']
-      changeValue?: FormItem<T>['changeValue'][] | FormItem<T>['changeValue']
+        return acc
+      },
+      { strDeps: [], objDeps: [] },
+    )
+    // ------------------------------处理 dependOn 中字符类型的依赖------------------
+    if (strDeps.length) {
+      watch(
+        strDeps.map(dep => () => model.value[dep]),
+        (values) => {
+          const depsValue = strDeps.reduce((acc, dep, index) => {
+            acc[dep] = values[index]
+            return acc
+          }, {} as any)
+          const readonlyDepsValue = readonly(depsValue)
+          delDepsUpdate({
+            changeConfig,
+            changeValue,
+            item,
+            readonlyValue: readonlyDepsValue,
+            runtimeConfig,
+            onConfigUpdated,
+            mapKeys,
+            model,
+            onValueUpdated,
+            name,
+          })
+        },
+        // TODO: 默认直接执行一次，后续提供配置控制
+        // 不允许deep，必须监听到键,deep会导致当model.value被赋值为一个新对象的时候也会触发watch
+        { immediate: true },
+      )
     }
-  >
->
-type ReadonlyDependValue<T extends string> = DeepReadonly<{ [K in T]: any }>
-export interface FormItem<T extends string = string> {
-  /**
-   * 表单项类型
-   */
-  widget: Widget
-  /**
-   * 类型可以是
-   * 1. ['key1', 'key2'] 这样配置的是对当前项对changeConfig/changeValue生效
-   * 2. {key1: {changeConfig, changeValue}, key2: {changeConfig, changeValue}} 这样配置的是当key值变动时只触发key配置的此模式下changeConfig/changeValue可接受一个数组
-   * 3.  ['key1', 'key2', key3: {changeConfig, changeValue}, key4: {changeConfig, changeValue}]这样配置时， key1/key2的是对当前项对changeConfig/changeValue生效； key3/key4只触发key配置的，此模式下changeConfig/changeValue可接受一个数组
-   */
-  dependOn?: T[] | DependOnObj<T> | (DependOnObj<T> | T)[]
-  changeConfig?: (
-    config: CanModifyFormItemConfig,
-    deps: ReadonlyDependValue<T>
-  ) => CanModifyFormItemConfig
-  changeValue?: (value: ReadonlyDependValue<T>) => { value: Value, attachValue: AttachValue }
-  disabled?: boolean
-  readonly?: boolean
-  visible?: boolean
-  hidden?: boolean
-  rules?: any
-  required?: boolean
-  label?: string
-  labelWidth?: number
-  errorMessage?: string
-  /**
-   * @deprecated from 1.4.0 统一使用 uni-forms 的对齐方式
-   */
-  labelAlign?: 'left' | 'center' | 'right'
-  /**
-   * @deprecated from 1.4.0 统一使用 uni-forms 的对齐方式
-   */
-  labelPosition?: 'top' | 'left'
-  /**
-   * @deprecated from 1.4.0 统一使用 uni-forms 的对齐方式
-   */
-  validateTrigger?: 'bind' | 'submit'
-  /**
-   * @deprecated from 1.4.0 请使用 #label 插槽实现相关功能
-   */
-  leftIcon?: string
-  /**
-   * @deprecated from 1.4.0 请使用 #label 插槽实现相关功能
-   */
-  iconColor?: string
-  slots?: {
-    label?: (item: FormItem<T> & { name: string }) => any
-    default?: (item: FormItem<T> & { name: string }) => any
+    // ------------------------------------------------------------------------------
+
+    // ------------------------------处理 dependOn中对象类型的依赖-----------------------
+    const objDepsEntries = Object.entries(objDeps)
+    if (objDepsEntries.length) {
+      for (const [key, config] of objDepsEntries) {
+        watch(
+          () => model.value[key],
+          (value) => {
+            const readonlyDepValue = readonly({ [key]: value }) as any
+            const { changeConfig, changeValue } = config
+            delDepsUpdate({
+              changeConfig,
+              changeValue,
+              item,
+              readonlyValue: readonlyDepValue,
+              runtimeConfig,
+              onConfigUpdated,
+              mapKeys,
+              model,
+              onValueUpdated,
+              name,
+            })
+          },
+          // TODO: 默认直接执行一次，后续提供配置控制,
+          // 不允许deep，必须监听到键,deep会导致当model.value被赋值为一个新对象的时候也会触发watch
+          { immediate: true },
+        )
+      }
+    }
+    // ------------------------------------------------------------------------------
   }
-  widgetProps?: Record<string, any>
-  [key: string]: any
 }
 
-export interface FormSchema<
-  T extends Record<string, any> = Record<string, any>,
-> {
-  rules?: Record<string, any>
-  validateTrigger?: 'bind' | 'submit' | 'blur'
-  labelPosition?: 'top' | 'left'
-  labelWidth?: string | number
-  labelAlign?: 'left' | 'center' | 'right'
-  errShowType?: 'undertext' | 'toast' | 'modal'
-  border?: boolean
-  config: Record<FormKeys<T>, FormItem<FormKeys<T>>>
+function updateConfig<
+  O extends Record<string, any>,
+  N extends Record<string, any>,
+  R extends Record<string, any>,
+>(old: O, newC: N, runtime: R, onConfigUpdated: any): N {
+  // 更新的是runtimeConfig 否则不生效
+  Object.assign(runtime[old.name], newC)
+  // 抛出runtimeConfig给外部emits用
+  onConfigUpdated && onConfigUpdated(runtime)
+  return runtime[old.name]
+}
+export function deleteName({
+  model,
+  names,
+  onValueUpdated,
+}: {
+  model: MaybeRef<Record<string, any>>
+  names: string[]
+  onValueUpdated?: any
+}) {
+  const temp = { ...unref(model) }
+  names.forEach((name) => {
+    delete temp[name]
+  })
+  onValueUpdated && onValueUpdated({ ...temp })
+}
+/**
+ * @param param
+ * @param param.model 旧的modelValue
+ * @param param.mapKeys mapKeys
+ * @param param.values [nameValue, ...mapKeysValues]
+ * @param param.name  nameKey
+ * @param param.onValueUpdated  modelValue更新的钩子
+ * @param param.hidden  是否是隐藏状态
+ */
+export function updateValue({
+  model,
+  mapKeys = [],
+  values,
+  onValueUpdated,
+  name = '',
+  hidden = false,
+}: {
+  model: MaybeRef<Record<string, any>>
+  values: any[]
+  onValueUpdated?: any
+  mapKeys?: string[]
+  name?: string
+  hidden: boolean
+}) {
+  const newO = values.reduce((acc, v, index) => {
+    if (name.length) {
+      // 第0项的值为当前表单key的更新值，剩余的为当前表单定义的mapKeys的值
+      const isKeyValue = index === 0
+      // 非NUP和非hidden状态下才更新
+      if (isKeyValue && v !== NUP && !hidden)
+        acc[name] = v
+      else if (mapKeys[index - 1])
+        acc[mapKeys[index - 1]] = v
+    }
+    else {
+      // 非NUP和非hidden状态下才更新
+      if (v !== NUP && !hidden && mapKeys[index]) {
+        // 不包含当前表单项的值
+        acc[mapKeys[index]] = v
+      }
+    }
+    return acc
+  }, {})
+
+  onValueUpdated && onValueUpdated({ ...unref(model), ...newO })
 }
 
 export function defineFormSchema<T extends Record<string, any>>(
@@ -122,128 +184,58 @@ export function defineFormSchema<T extends Record<string, any>>(
 ) {
   return schema
 }
-export type FormKeys<T> = T extends MaybeRef<T> ? keyof UnwrapRef<T> : keyof T
-export type PickModel<
-  T extends Record<string, any>,
-  K extends string,
-> = Readonly<Pick<T, K>>
 
 /**
- * @description 处理dependOn的行为，dependOn修改时需要触发 changeConfig 和 changeValue
+ * 处理changeValue和changeConfig可复用逻辑
  */
-export function useDependOn<T extends Record<string, any>>(
-  model: T,
-  list: (FormItem<FormKeys<T>> & { name: string })[],
-) {
-  for (let index = 0; index < list.length; index++) {
-    const item = list[index]
-    const { changeConfig, changeValue } = item
-    const deps = Array.isArray(item.dependOn) ? item.dependOn : [item.dependOn]
-    const { strDeps, objDeps } = deps.reduce(
-      (
-        acc: { strDeps: FormKeys<T>[], objDeps: DependOnObj<FormKeys<T>>[] },
-        dep,
-      ) => {
-        // 影响当前项配置的changeConfig 和 changeValue
-        if (typeof dep === 'string')
-          acc.strDeps.push(dep)
-        // 对象配置，影响单个key的配置
-        else acc.objDeps.push(dep as DependOnObj<FormKeys<T>>)
-
-        return acc
-      },
-      { strDeps: [], objDeps: [] },
+function delDepsUpdate<T extends Record<string, any>>({
+  changeConfig,
+  changeValue,
+  item,
+  readonlyValue,
+  runtimeConfig,
+  onConfigUpdated,
+  mapKeys,
+  model,
+  onValueUpdated,
+  name,
+}: {
+  changeConfig: FormItem<FormKeys<T>>['changeConfig']
+  changeValue: FormItem<FormKeys<T>>['changeValue']
+  item: FormItem<FormKeys<T>> & { name: FormKeys<T> }
+  readonlyValue: any
+  mapKeys: string[]
+  model: Ref<T>
+  runtimeConfig: FormSchema<T>['config']
+  name: FormKeys<T>
+  onValueUpdated: (modelValue: Ref<T>) => void
+  onConfigUpdated: (config: FormSchema<T>['config']) => void
+}) {
+  const newConfig = changeConfig && changeConfig(item, readonlyValue)
+  // 更新config
+  if (newConfig) {
+    const updatedCfg = updateConfig(
+      item,
+      newConfig,
+      runtimeConfig,
+      onConfigUpdated,
     )
-    // 处理当前项配置的changeConfig 和 changeValue
-    watch(
-      () =>
-        strDeps.reduce((acc, strDep) => {
-          acc[strDep] = readonly(model[strDep])
-          return acc
-        }, {} as any),
-      (values) => {
-        changeConfig && changeConfig(item, values)
-        changeValue && changeValue(values)
-      },
-      // TODO: 默认直接执行一次，深度监听，后续提供配置控制
-      { immediate: true, deep: true },
-    )
-    const objDepsEntries = Object.entries(objDeps)
-    // 处理对象配置的changeConfig 和 changeValue
-    for (const [key, config] of objDepsEntries) {
-      watch(
-        () => readonly({ [key]: model[key] }),
-        (value) => {
-          // if (Array.isArray(changeValue))
-          //   changeValue.forEach(changeValue => changeValue(config, value))
-        },
-        // TODO: 默认直接执行一次，深度监听，后续提供配置控制
-        { immediate: true, deep: true },
-      )
+    // 不缓存的情况下删除name和mapKeys中定义的值,直接return,不需要处理后续的changeValue
+    if (!item.cache && updatedCfg.hidden) {
+      deleteName({ model, names: [item.name, ...mapKeys], onValueUpdated })
+      return
     }
   }
+  const newValues = changeValue && changeValue(readonlyValue)
+  // 更新值
+  if (Array.isArray(newValues)) {
+    updateValue({
+      model,
+      mapKeys,
+      values: newValues,
+      onValueUpdated,
+      name,
+      hidden: !!runtimeConfig[item.name].hidden,
+    })
+  }
 }
-/**
- * usage
- */
-const model = reactive({
-  name: '',
-  age: '',
-  x: '',
-})
-
-type Model = typeof model
-
-/**
- *
- * @type {defineFormSchema<Model>}
- */
-const schema = defineFormSchema<Model>({
-  labelPosition: 'left',
-  config: {
-    name: {
-      widget: 'cascader',
-      label: '姓名',
-      dependOn: [
-        'age',
-        {
-          x: {
-            changeConfig: [
-              (config) => {
-                return config
-              },
-            ],
-          },
-          age: {
-            changeConfig: (config) => {
-              return config
-            },
-          },
-        },
-      ],
-      changeConfig(config, deps: PickModel<Model, 'age'>) {
-        config.disabled = deps.age === '1'
-        return config
-      },
-      slots: {
-        default: () => {
-          return h('div', {}, 'this is div element')
-        },
-      },
-    },
-    age: {
-      dependOn: ['name'],
-      widget: 'checkbox',
-      label: '年龄',
-    },
-    x: {
-      widget: 'cascader',
-      dependOn: ['x'],
-      changeConfig(config, deps: PickModel<Model, 'x'>) {
-        config.readonly = deps.x === 'x'
-        return config
-      },
-    },
-  },
-})
-// useDependOn(model, schema)
