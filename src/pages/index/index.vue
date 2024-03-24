@@ -3,9 +3,9 @@ import { ref } from 'vue'
 import type { UnwrapRef } from 'vue'
 import {
   defineFormSchema,
-} from '@/components/UniMpForm/useForm'
-import { NUP, type PickModel } from '@/components/UniMpForm/type'
-import UniMpForm from '@/components/UniMpForm/UniMpForm.vue'
+} from '@/components/UniConfigForm/useForm'
+import { NUP, type PickModel } from '@/components/UniConfigForm/type'
+import UniConfigForm from '@/components/UniConfigForm/UniConfigForm.vue'
 
 /**
  * usage
@@ -68,7 +68,7 @@ const schema = defineFormSchema<Model>({
 
 <template>
   <view class="content">
-    <UniMpForm v-model="model" v-model:schema="schema" />
+    <UniConfigForm v-model="model" v-model:schema="schema" />
   </view>
 </template>
 
