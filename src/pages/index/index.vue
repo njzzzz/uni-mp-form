@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { UnwrapRef } from 'vue'
 import {
   defineFormSchema,
-} from '@/components/UniConfigForm/useForm'
-import { NUP, type PickModel } from '@/components/UniConfigForm/type'
-import UniConfigForm from '@/components/UniConfigForm/UniConfigForm.vue'
+} from '@uni-config-form/vue3-ts/use-form'
+import { NUP, type PickModel } from '@uni-config-form/vue3-ts/type'
+import UniConfigForm from '@uni-config-form/vue3-ts/uni-config-form.vue'
 
 /**
  * usage
  */
-const model = ref({
+interface IModel {
+  name: string
+  age: string
+  x: string
+}
+const model = ref<IModel>({
   name: '',
   age: '',
   x: '',
@@ -18,10 +22,9 @@ const model = ref({
 /**
  * 增加这两个类型可获得类型提示
  */
-type Model = typeof model
-type PickDep<T extends keyof UnwrapRef<Model>> = PickModel<Model, T>
+type PickDep<T extends keyof IModel> = PickModel<IModel, T>
 
-const schema = defineFormSchema<Model>({
+const schema = defineFormSchema<IModel>({
   labelPosition: 'left',
   config: {
     name: {

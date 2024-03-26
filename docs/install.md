@@ -1,6 +1,6 @@
-# Markdown Extension Examples
+# 安装
 
-This page demonstrates some of the built-in markdown extensions provided by VitePress.
+由于uni是静态编译，所以无法打包成js，需要保留.vue文件，所以提供了ts和jsliangge
 
 ## Syntax Highlighting
 

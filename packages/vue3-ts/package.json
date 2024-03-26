@@ -1,0 +1,13 @@
+{
+  "name": "@uni-config-form/vue3-ts",
+  "version": "0.0.1",
+  "exports": {
+    "./*": "./*"
+  },
+  "files": [
+    "component-import.vue",
+    "type.ts",
+    "uni-config-form",
+    "use-form.ts"
+  ]
+}

@@ -10,6 +10,4 @@ Uniapp vue3 版本小程序踩坑记录
 
 Pnpm monorepo
 
-引用均使用packagename
-
-否则会导致ts类型不一致问题
+引用均使用packagename 否则会导致ts类型不一致问题
