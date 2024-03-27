@@ -13,7 +13,7 @@ $ pnpm add -S @uni-config-form/vue3
 ```
 
 ```yarn
-$ yarn add -D @uni-config-form/vue3
+$ yarn add -S @uni-config-form/vue3
 ```
 
 :::
