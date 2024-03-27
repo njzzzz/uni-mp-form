@@ -9,7 +9,7 @@ $ npm add -S @uni-config-form/vue3
 ```
 
 ```pnpm
-$ pnpm add -D @uni-config-form/vue3
+$ pnpm add -S @uni-config-form/vue3
 ```
 
 ```yarn
