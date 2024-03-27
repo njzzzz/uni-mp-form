@@ -4,20 +4,16 @@
 
 ::: code-group
 
-```shell
+```npm
 $ npm add -S @uni-config-form/vue3
 ```
 
-```shell
+```pnpm
 $ pnpm add -D @uni-config-form/vue3
 ```
 
-```shell
+```yarn
 $ yarn add -D @uni-config-form/vue3
-```
-
-```shell
-$ bun add -D @uni-config-form/vue3
 ```
 
 :::
