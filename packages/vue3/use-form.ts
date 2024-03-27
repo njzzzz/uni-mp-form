@@ -6,7 +6,7 @@ import {
   type FormKeys,
   type FormSchema,
   NUP,
-} from '@uni-config-form/vue3-ts/type'
+} from '@uni-config-form/vue3/type'
 /**
  * @description 处理dependOn的行为，dependOn修改时需要触发 changeConfig 和 changeValue
  */

@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue'
-import type { Widget } from '@uni-config-form/vue3-ts/type'
+import type { Widget } from '@uni-config-form/vue3/type'
 
 defineProps({
   widget: {
     type: String as PropType<Widget>,
     default: 'uni-easyinput',
   },
+  modelValue: String,
   updateModelValue: Function,
   updateMapKeys: Function,
 

@@ -1,6 +1,8 @@
 {
-  "name": "@uni-config-form/vue3-ts",
+  "name": "@uni-config-form/vue3",
   "version": "0.0.1",
+  "author": { "name": "njzzzz" },
+  "repository": { "url": "https://github.com/njzzzz/uni-mp-form" },
   "exports": {
     "./*": "./*"
   },

@@ -2,9 +2,9 @@
 import { ref } from 'vue'
 import {
   defineFormSchema,
-} from '@uni-config-form/vue3-ts/use-form'
-import { NUP, type PickModel } from '@uni-config-form/vue3-ts/type'
-import UniConfigForm from '@uni-config-form/vue3-ts/uni-config-form.vue'
+} from '@uni-config-form/vue3/use-form'
+import { NUP, type PickModel } from '@uni-config-form/vue3/type'
+import UniConfigForm from '@uni-config-form/vue3/uni-config-form.vue'
 
 /**
  * usage

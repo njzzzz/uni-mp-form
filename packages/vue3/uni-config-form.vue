@@ -4,9 +4,9 @@
  */
 import { type Ref, computed } from 'vue'
 import { ref, toRefs, watch } from 'vue'
-import type { FormSchema, WidgetPropsInFormItem } from '@uni-config-form/vue3-ts/type'
-import { updateValue, useDependOn } from '@uni-config-form/vue3-ts/use-form'
-import ComponentImport from '@uni-config-form/vue3-ts/component-import.vue'
+import type { FormSchema, WidgetPropsInFormItem } from '@uni-config-form/vue3/type'
+import { updateValue, useDependOn } from '@uni-config-form/vue3/use-form'
+import ComponentImport from '@uni-config-form/vue3/component-import.vue'
 
 interface Props {
   schema: FormSchema<T>

@@ -26,7 +26,7 @@ export default defineConfig({
         text: '开始',
         items: [
           { text: '快速上手', link: '/install' },
-          { text: 'Runtime API Examples', link: '/api-examples' },
+          // { text: '演练场', link: '/playground' },
         ],
       },
     ],
